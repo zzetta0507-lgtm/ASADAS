@@ -1,3 +1,11 @@
+"""Módulo principal y orquestador del Sistema Geográfico de ASADAS.
+
+Este archivo funciona como el punto de entrada (Entry Point) del software. 
+Gestiona la interfaz de usuario en consola mediante menús interactivos, 
+controla la limpieza de pantalla, inicializa las rutinas de sincronización 
+binaria y delega el arranque del servidor distribuido multi-hilo.
+"""
+
 import os
 import threading
 import api_client
@@ -30,11 +38,21 @@ BANNER_ASCII = f"""{CLR_NEON}
 SEP_LINE = f"{CLR_GRIS}--------------------------------------------------{CLR_RESET}"
 
 def limpiar_pantalla():
-    """Limpia la consola según el sistema operativo."""
+    """Limpia los flujos de texto de la consola activa.
+
+    Detecta de forma dinámica el identificador del entorno del sistema operativo 
+    para ejecutar el comando nativo de limpieza correspondiente ('cls' en Windows 
+    o 'clear' en sistemas basados en Unix/Mac).
+    """
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def sincronizar_sistema():
-    """Consulta los datos remotos de ARESEP y regenera las tres estructuras."""
+    """Descarga los datos del Web Service de ARESEP y reconstruye el repositorio binario.
+
+    Invoca la API de descarga e implementa de forma secuencial la escritura del 
+    archivo físico principal, la indexación del Árbol Binario de Búsqueda 
+    iterativo y el mapeo de la división político-administrativa del país.
+    """
     print(f"\n{CLR_NEON}[*]{CLR_RESET} Iniciando proceso de sincronización incremental...")
     
     datos_json = api_client.descargar_datos_asadas()
@@ -60,6 +78,12 @@ def sincronizar_sistema():
     input(f"\n{CLR_GRIS}Presione [Enter] para regresar al menú principal...{CLR_RESET}")
 
 def menu():
+    """Despliega el menú principal iterativo y captura la selección del usuario.
+
+    Controla el flujo lógico de la aplicación validando las entradas por terminal, 
+    gestionando las llamadas a submenús dependientes en cascada para la consulta 
+    geográfica y disparando las excepciones de control de datos.
+    """
     while True:
         limpiar_pantalla()
         print(BANNER_ASCII)
@@ -150,7 +174,7 @@ def menu():
                     raise IndexError
                 distrito_sel = distritos[sel_d]
                 
-                # ---- DESPLIEGUE FINAL ----
+                # ---- DESPLIEGUE FINAL DE LOS REGISTROS ----
                 limpiar_pantalla()
                 print(BANNER_ASCII)
                 lista_asadas = estructura_geo[provincia_sel][canton_sel][distrito_sel]
