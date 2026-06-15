@@ -1,3 +1,10 @@
+"""Módulo de pruebas para la terminal distribuida del sistema de ASADAS.
+
+Implementa un cliente de red independiente que se conecta mediante sockets TCP/IP
+al servidor central, enviando solicitudes de consulta en formato JSON y
+procesando las respuestas de la base de datos binaria remota.
+"""
+
 import socket
 import json
 
@@ -6,6 +13,12 @@ SERVIDOR_IP = "127.0.0.1"
 SERVIDOR_PUERTO = 5000
 
 def ejecutar_consulta():
+    """Solicita un identificador al usuario y realiza una petición síncrona al servidor.
+
+    Crea un socket cliente, establece el canal de comunicación, serializa el
+    paquete de datos bajo el protocolo JSON acordado, envía la trama de bytes
+    y queda a la espera de la respuesta del servidor para decodificar los detalles.
+    """
     print("\n=== SCRIPT DE PRUEBA: CLIENTE REMOTO TCP/IP ===")
     id_a_buscar = input("Introduce el id_Asada que deseas solicitar al servidor: ").strip()
     
@@ -19,7 +32,7 @@ def ejecutar_consulta():
         print("[CLIENTE] Error: El ID debe ser un número entero puro.")
         return
 
-    # 1. Crear el conector del Socket de baja capa
+    # 1. Crear el conector del Socket de bajo nivel
     print(f"[CLIENTE] Intentando establecer conexión con {SERVIDOR_IP}:{SERVIDOR_PUERTO}...")
     cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     

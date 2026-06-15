@@ -8,8 +8,15 @@ from config import SERVER_HOST, SERVER_PORT
 raiz_arbol_memoria = None
 
 def atender_cliente(conn, addr):
-    """
-    Gestiona las solicitudes de un cliente remoto concurrentemente usando hilos dedicados.
+    """Gestiona de forma concurrente el ciclo de peticiones de un terminal cliente.
+
+    Mantiene un canal síncrono para decodificar los strings JSON entrantes, 
+    realizar las consultas en disco/ABB y responder de manera segura sin 
+    bloquear el servidor central.
+
+    Args:
+        conn (socket.socket): Objeto socket que representa la conexión activa.
+        addr (tuple): Dirección IP y puerto de origen del terminal remoto.
     """
     print(f"[CONEXIÓN] Canal establecido con el terminal: {addr}")
     global raiz_arbol_memoria
@@ -25,7 +32,6 @@ def atender_cliente(conn, addr):
                 continue
 
             try:
-                # Intento defensivo de parsear la solicitud en formato JSON
                 solicitud = json.loads(datos_recibidos)
             except json.JSONDecodeError:
                 respuesta_error = {"status": "BAD_REQUEST", "message": "El protocolo distribuido requiere JSON válido."}
@@ -37,11 +43,9 @@ def atender_cliente(conn, addr):
             if tipo_consulta == "BUSCAR_ID":
                 try:
                     id_buscar = int(solicitud.get("id_asada"))
-                    # Búsqueda logarítmica O(log n) sobre el árbol binario iterativo
                     nodo = bst_index.buscar_en_abb(raiz_arbol_memoria, id_buscar)
                     
                     if nodo:
-                        # Lectura binaria por desplazamiento directo en bytes
                         asada_info = file_manager.leer_registro_por_posicion(nodo.posicion_fisica)
                         conn.sendall(json.dumps({"status": "OK", "data": asada_info}).encode('utf-8'))
                     else:
@@ -58,11 +62,12 @@ def atender_cliente(conn, addr):
         print(f"[DESCONEXIÓN] Canal cerrado con el cliente: {addr}")
 
 def iniciar_servidor():
-    """
-    Levanta el socket del servidor central y carga la estructura de indexación.
+    """Inicializa el socket maestro del servidor y lo pone en modo escucha.
+
+    Carga preventivamente el índice del ABB a la memoria RAM y levanta el bucle 
+    de recepción asignando hilos independientes (daemon=True) para cada petición.
     """
     global raiz_arbol_memoria
-    # Carga preventiva del ABB a memoria RAM para máxima velocidad de consulta distribuida
     raiz_arbol_memoria = bst_index.cargar_abb_desde_binario()
     
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -74,7 +79,6 @@ def iniciar_servidor():
     while True:
         try:
             conn, addr = servidor.accept()
-            # Delegación de la conexión a un hilo independiente (Asincronía y concurrencia)
             hilo = threading.Thread(target=atender_cliente, args=(conn, addr), daemon=True)
             hilo.start()
         except KeyboardInterrupt:

@@ -2,9 +2,18 @@ import json
 from config import ARCHIVO_GEOGRAFICO
 
 def construir_estructura_jerarquica(lista_asadas, mapa_posiciones):
-    """
-    Genera dinámicamente en memoria la estructura de listas:
-    Provincia -> Cantón -> Distrito -> Array de ASADAS [ID, Posición Física].
+    """Agrupa las ASADAS en un mapa multinivel que emula listas enlazadas jerárquicas.
+
+    Organiza la división político-administrativa bajo la estructura 
+    Provincia -> Cantón -> Distrito. Ordena internamente las listas finales de 
+    ASADAS de menor a mayor según sus identificadores numéricos.
+
+    Args:
+        lista_asadas (list): Colección de diccionarios con los datos originales.
+        mapa_posiciones (dict): Diccionario de punteros físicos {ID: Posición}.
+
+    Returns:
+        dict: Estructura jerárquica multinivel con las relaciones geográficas.
     """
     estructura = {}
 
@@ -38,7 +47,6 @@ def construir_estructura_jerarquica(lista_asadas, mapa_posiciones):
             "posicion_fisica": pos_fisica
         })
         
-    # CORRECCIÓN DE RÚBRICA: Ordenamiento estricto de menor a mayor por ID por distrito
     for prov in estructura:
         for cant in estructura[prov]:
             for dist in estructura[prov][cant]:
@@ -47,16 +55,20 @@ def construir_estructura_jerarquica(lista_asadas, mapa_posiciones):
     return estructura
 
 def guardar_geografia_binario(estructura):
-    """
-    Persiste la estructura jerárquica en el archivo binario correspondiente.
+    """Persiste el mapa de la estructura jerárquica en el archivo binario geográfico.
+
+    Args:
+        estructura (dict): Mapa jerárquico multinivel generado en memoria.
     """
     with open(ARCHIVO_GEOGRAFICO, "wb") as f:
         datos_bytes = json.dumps(estructura).encode('utf-8')
         f.write(datos_bytes)
 
 def cargar_geografia_desde_binario():
-    """
-    Lee el archivo binario geográfico y lo deserializa para la navegación por menús.
+    """Lee y deserializa el archivo binario geográfico para su despliegue jerárquico.
+
+    Returns:
+        dict: Estructura jerárquica multinivel recuperada, o un mapa vacío si no existe.
     """
     try:
         with open(ARCHIVO_GEOGRAFICO, "rb") as f:

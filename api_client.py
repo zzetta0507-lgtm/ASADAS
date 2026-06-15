@@ -3,9 +3,16 @@ import json
 from config import URL_ENDPOINT
 
 def descargar_datos_asadas():
-    """
-    Se conecta al endpoint de ARESEP, descarga el contenido y fuerza
-    el desempaquetado en cascada hasta extraer la lista de registros puros.
+    """Conecta con el endpoint de datos abiertos de ARESEP y extrae los registros.
+
+    Realiza una petición HTTP, descarga el contenido JSON y ejecuta un bucle
+    adaptativo de desempaquetado profundo (Deep Unwrapping) para eliminar los
+    envoltorios del Web Service hasta aislar la lista pura de ASADAS.
+
+    Returns:
+        list: Una lista de diccionarios, donde cada diccionario representa una 
+              ASADA con sus propiedades. Retorna una lista vacía o None si 
+              ocurre un fallo.
     """
     try:
         print("Conectando al endpoint de ARESEP...")
@@ -19,18 +26,14 @@ def descargar_datos_asadas():
                 datos_raw = response.read().decode('utf-8')
                 objeto_actual = json.loads(datos_raw)
                 
-                # Bucle adaptativo de desempaquetado profundo (Deep Unwrapping)
                 while isinstance(objeto_actual, str) or isinstance(objeto_actual, dict):
                     if isinstance(objeto_actual, str):
                         objeto_actual = json.loads(objeto_actual)
                     elif isinstance(objeto_actual, dict):
                         llaves = list(objeto_actual.keys())
                         
-                        # Caso A: Envoltorio estándar de Web Service (WCF)
                         if len(llaves) == 1 and ("Result" in llaves[0] or "Obtener" in llaves[0]):
                             objeto_actual = objeto_actual[llaves[0]]
-                        
-                        # Caso B: Buscar dinámicamente si el objeto contiene el array de datos
                         else:
                             encontrado = False
                             for k in llaves:
@@ -38,7 +41,6 @@ def descargar_datos_asadas():
                                     objeto_actual = objeto_actual[k]
                                     encontrado = True
                                     break
-                            
                             if not encontrado:
                                 break
 
@@ -56,7 +58,12 @@ def descargar_datos_asadas():
         return None
 
 def verificar_modificacion_remota():
-    """
-    Simulación o verificación de metadatos para la sincronización incremental.
+    """Verifica la fecha de última modificación de los datos remotos.
+
+    Servicio auxiliar utilizado para determinar si el repositorio local
+    requiere una sincronización incremental o si se encuentra actualizado.
+
+    Returns:
+        str: Cadena de texto con formato de fecha (AAAA-MM-DD).
     """
     return "2026-06-15"

@@ -4,12 +4,20 @@ from pyproj import Transformer
 import folium
 
 def transformar_coordenadas(crtm05_x, crtm05_y):
-    """
-    Realiza la conversión oficial matemática de coordenadas planas CRTM05 a WGS84.
+    """Transforma coordenadas planas del modelo nacional CRTM05 a geocéntricas WGS84.
+
+    Utiliza algoritmos cartográficos matemáticos provistos por la biblioteca 
+    pyproj para realizar la proyección de puntos geográficos.
+
+    Args:
+        crtm05_x (float): Coordenada en el eje X (Este) bajo el estándar EPSG:5367.
+        crtm05_y (float): Coordenada en el eje Y (Norte) bajo el estándar EPSG:5367.
+
+    Returns:
+        tuple: Pareja de floats (latitud, longitud) en el sistema global EPSG:4326, 
+               o None si falla.
     """
     try:
-        # EPSG:5367 -> Código Geográfico de CRTM05 (Costa Rica)
-        # EPSG:4326 -> Código Geográfico de WGS84 (Global Lat/Lon)
         transformer = Transformer.from_crs("EPSG:5367", "EPSG:4326", always_xy=True)
         lon, lat = transformer.transform(crtm05_x, crtm05_y)
         return lat, lon
@@ -18,8 +26,13 @@ def transformar_coordenadas(crtm05_x, crtm05_y):
         return None
 
 def generar_mapa_asada(asada_data):
-    """
-    Genera dinámicamente un documento HTML embebiendo OpenStreetMap y lo abre de forma automática.
+    """Renderiza una vista interactiva de OpenStreetMap centrada en la ASADA.
+
+    Calcula la posición global WGS84, inicializa una plantilla HTML mediante folium, 
+    inyecta un marcador dinámico y ordena la apertura automática en el navegador web.
+
+    Args:
+        asada_data (dict): Diccionario extendido con las propiedades de la ASADA.
     """
     x = asada_data.get("coordenadaX")
     y = asada_data.get("coordenadaY")
@@ -33,7 +46,6 @@ def generar_mapa_asada(asada_data):
     if coordenadas_wgs84:
         lat, lon = coordenadas_wgs84
         
-        # Inicialización del mapa en folium centrado en la ASADA consultada
         mapa = folium.Map(location=[lat, lon], zoom_start=15)
         folium.Marker(
             location=[lat, lon],
@@ -44,6 +56,5 @@ def generar_mapa_asada(asada_data):
         archivo_html = "mapa_asada_dinamico.html"
         mapa.save(archivo_html)
         
-        # Despliegue automático en el browser del sistema operativo
         webbrowser.open("file://" + os.path.realpath(archivo_html))
         print("Localización visualizada de forma exitosa en OpenStreetMap.")

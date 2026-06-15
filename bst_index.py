@@ -2,16 +2,33 @@ import struct
 from config import ARCHIVO_INDICE_ABB
 
 class NodoABB:
+    """Representa un nodo individual dentro del Árbol Binario de Búsqueda."""
+
     def __init__(self, id_asada, posicion_fisica):
+        """Inicializa las propiedades clave y punteros del nodo.
+
+        Args:
+            id_asada (int): Identificador numérico único de la ASADA (llave).
+            posicion_fisica (int): Dirección de bytes en el archivo binario secuencial.
+        """
         self.id_asada = id_asada
         self.posicion_fisica = posicion_fisica
         self.izq = None
         self.der = None
 
 def insertar_nodo_iterativo(raiz, id_asada, posicion_fisica):
-    """
-    Inserta un nodo en el árbol binario de manera puramente iterativa usando ciclos.
-    Previene el colapso de la pila de llamadas de Python.
+    """Inserta una nueva llave en el árbol binario utilizando un ciclo iterativo.
+
+    Evita el crecimiento de la pila de llamadas de Python, anulando el riesgo 
+    de sufrir un desbordamiento de memoria por recursión masiva.
+
+    Args:
+        raiz (NodoABB): Nodo raíz actual del árbol.
+        id_asada (int): Identificador de la ASADA a insertar.
+        posicion_fisica (int): Dirección física en bytes de la ASADA.
+
+    Returns:
+        NodoABB: La raíz del árbol modificado.
     """
     nuevo_nodo = NodoABB(id_asada, posicion_fisica)
     if raiz is None:
@@ -30,12 +47,21 @@ def insertar_nodo_iterativo(raiz, id_asada, posicion_fisica):
                 break
             actual = actual.der
         else:
-            break  # Elemento duplicado omitido
+            break  
     return raiz
 
 def buscar_en_abb(raiz, id_asada):
-    """
-    Busca de manera óptima O(log n) utilizando un ciclo repetitivo directo.
+    """Busca una ASADA en el árbol con un rendimiento logarítmico O(log n).
+
+    Navega de forma puramente iterativa a través de los punteros izquierdo o 
+    derecho comparando el identificador numérico.
+
+    Args:
+        raiz (NodoABB): Nodo raíz del árbol donde se realizará la consulta.
+        id_asada (int): Identificador numérico a buscar.
+
+    Returns:
+        NodoABB: El objeto nodo coincidente si se encuentra, de lo contrario None.
     """
     actual = raiz
     while actual is not None:
@@ -48,9 +74,13 @@ def buscar_en_abb(raiz, id_asada):
     return None
 
 def guardar_abb_binario(raiz):
-    """
-    Guarda el árbol en el archivo binario del índice recorriéndolo en Pre-orden
-    mediante una pila secuencial en memoria RAM, evitando la recursión.
+    """Serializa el ABB completo en el archivo binario de índice.
+
+    Recorre el árbol en Pre-orden utilizando una estructura de pila (stack) 
+    manual en RAM, empaquetando cada nodo en bloques fijos de 8 bytes (dos enteros).
+
+    Args:
+        raiz (NodoABB): Nodo raíz del árbol a persistir.
     """
     if raiz is None:
         return
@@ -60,7 +90,6 @@ def guardar_abb_binario(raiz):
         while len(pila) > 0:
             nodo_actual = pila.pop()
             
-            # Empaquetado binario de dos enteros nativos (8 bytes totales -> 'II')
             f.write(struct.pack("II", nodo_actual.id_asada, nodo_actual.posicion_fisica))
             
             if nodo_actual.der is not None:
@@ -69,8 +98,13 @@ def guardar_abb_binario(raiz):
                 pila.append(nodo_actual.izq)
 
 def cargar_abb_desde_binario():
-    """
-    Reconstruye el Árbol Binario de Búsqueda iterativamente leyendo el archivo de índice.
+    """Reconstruye el Árbol Binario de Búsqueda leyendo el archivo binario de índice.
+
+    Lee iterativamente los bloques de 8 bytes hasta el final del archivo, 
+    reinsertando cada registro para levantar el árbol en memoria RAM.
+
+    Returns:
+        NodoABB: La raíz del árbol binario de búsqueda reconstruido, o None si no existe.
     """
     raiz = None
     try:

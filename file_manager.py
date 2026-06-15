@@ -3,10 +3,17 @@ import json
 from config import ARCHIVO_PRINCIPAL
 
 def guardar_registros_secuenciales(lista_asadas):
-    """
-    Escribe los registros completos en el archivo binario principal de forma secuencial.
-    Antepone un entero de 4 bytes indicando la longitud del bloque de datos.
-    Retorna un mapa {id_asada: posicion_fisica} de enteros.
+    """Persiste los registros completos en el archivo binario de forma secuencial.
+
+    Serializa cada diccionario a bytes UTF-8, antepone un entero de 4 bytes 
+    (formato unsigned int 'I') con la longitud del bloque y guarda la posición 
+    física del puntero mediante direccionamiento directo.
+
+    Args:
+        lista_asadas (list): Colección de diccionarios con los datos crudos de las ASADAS.
+
+    Returns:
+        dict: Un mapa de correspondencias de tipo {id_asada (int): posicion_fisica (int)}.
     """
     mapa_posiciones = {}
     
@@ -24,7 +31,6 @@ def guardar_registros_secuenciales(lista_asadas):
                 continue
             
             try:
-                # Normalización restrictiva a tipo entero del identificador
                 id_asada = int(id_asada_raw)
             except (ValueError, TypeError):
                 continue
@@ -32,10 +38,8 @@ def guardar_registros_secuenciales(lista_asadas):
             datos_bytes = json.dumps(asada).encode('utf-8')
             longitud = len(datos_bytes)
             
-            # Captura de la posición física del puntero en el archivo (Direccionamiento directo)
             posicion_actual = f.tell()
             
-            # Serialización binaria: Longitud (4 bytes 'I') + Datos UTF-8
             f.write(struct.pack("I", longitud))
             f.write(datos_bytes)
             
@@ -44,9 +48,16 @@ def guardar_registros_secuenciales(lista_asadas):
     return mapa_posiciones
 
 def leer_registro_por_posicion(posicion):
-    """
-    Realiza acceso directo posicionándose en los bytes exactos indicados
-    y extrae el objeto JSON original.
+    """Realiza un acceso directo al archivo binario principal usando un puntero físico.
+
+    Se desplaza mediante seek() a la posición exacta de bytes indicada, lee la
+    longitud del registro y reconstruye el objeto JSON original.
+
+    Args:
+        posicion (int): Desplazamiento o dirección física en bytes dentro del archivo.
+
+    Returns:
+        dict: Diccionario con los datos de la ASADA leída, o None si ocurre un error.
     """
     try:
         with open(ARCHIVO_PRINCIPAL, "rb") as f:
