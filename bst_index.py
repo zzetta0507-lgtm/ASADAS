@@ -8,57 +8,79 @@ class NodoABB:
         self.izq = None
         self.der = None
 
-def insertar_nodo(raiz, id_asada, posicion_fisica):
+def insertar_nodo_iterativo(raiz, id_asada, posicion_fisica):
+    """
+    Inserta un nodo en el árbol binario de manera puramente iterativa usando ciclos.
+    Previene el colapso de la pila de llamadas de Python.
+    """
+    nuevo_nodo = NodoABB(id_asada, posicion_fisica)
     if raiz is None:
-        return NodoABB(id_asada, posicion_fisica)
-    if id_asada < raiz.id_asada:
-        raiz.izq = insertar_nodo(raiz.izq, id_asada, posicion_fisica)
-    elif id_asada > raiz.id_asada:
-        raiz.der = insertar_nodo(raiz.der, id_asada, posicion_fisica)
+        return nuevo_nodo
+    
+    actual = raiz
+    while True:
+        if id_asada < actual.id_asada:
+            if actual.izq is None:
+                actual.izq = nuevo_nodo
+                break
+            actual = actual.izq
+        elif id_asada > actual.id_asada:
+            if actual.der is None:
+                actual.der = nuevo_nodo
+                break
+            actual = actual.der
+        else:
+            break  # Elemento duplicado omitido
     return raiz
 
 def buscar_en_abb(raiz, id_asada):
     """
-    Busca de forma eficiente O(log n) el ID en el árbol cargado en memoria.
-    Retorna la posición física en el archivo principal.
+    Busca de manera óptima O(log n) utilizando un ciclo repetitivo directo.
     """
-    if raiz is None or raiz.id_asada == id_asada:
-        return raiz
-    if id_asada < raiz.id_asada:
-        return buscar_en_abb(raiz.izq, id_asada)
-    return buscar_en_abb(raiz.der, id_asada)
+    actual = raiz
+    while actual is not None:
+        if id_asada == actual.id_asada:
+            return actual
+        elif id_asada < actual.id_asada:
+            actual = actual.izq
+        else:
+            actual = actual.der
+    return None
 
-def guardar_abb_binario(raiz, archivo_f=None):
+def guardar_abb_binario(raiz):
     """
-    Persiste el árbol recorriéndolo en Pre-orden y guardándolo en el archivo binario.
-    Estructura del registro indexado: [id_asada (int), posicion_fisica (int)]
+    Guarda el árbol en el archivo binario del índice recorriéndolo en Pre-orden
+    mediante una pila secuencial en memoria RAM, evitando la recursión.
     """
-    abrir_archivo = archivo_f is None
-    if abrir_archivo:
-        archivo_f = open(ARCHIVO_INDICE_ABB, "wb")
-        
-    if raiz is not None:
-        # Empaquetar ID y Posición Física (2 enteros de 4 bytes = 'II')
-        archivo_f.write(struct.pack("II", raiz.id_asada, raiz.posicion_fisica))
-        guardar_abb_binario(raiz.izq, archivo_f)
-        guardar_abb_binario(raiz.der, archivo_f)
-        
-    if abrir_archivo:
-        archivo_f.close()
+    if raiz is None:
+        return
+
+    with open(ARCHIVO_INDICE_ABB, "wb") as f:
+        pila = [raiz]
+        while len(pila) > 0:
+            nodo_actual = pila.pop()
+            
+            # Empaquetado binario de dos enteros nativos (8 bytes totales -> 'II')
+            f.write(struct.pack("II", nodo_actual.id_asada, nodo_actual.posicion_fisica))
+            
+            if nodo_actual.der is not None:
+                pila.append(nodo_actual.der)
+            if nodo_actual.izq is not None:
+                pila.append(nodo_actual.izq)
 
 def cargar_abb_desde_binario():
     """
-    Lee el archivo binario del índice y reconstruye el árbol en memoria.
+    Reconstruye el Árbol Binario de Búsqueda iterativamente leyendo el archivo de índice.
     """
     raiz = None
     try:
         with open(ARCHIVO_INDICE_ABB, "rb") as f:
             while True:
-                datos = f.read(8) # 2 enteros de 4 bytes cada uno
+                datos = f.read(8)
                 if not datos:
                     break
                 id_asada, posicion_fisica = struct.unpack("II", datos)
-                raiz = insertar_nodo(raiz, id_asada, posicion_fisica)
+                raiz = insertar_nodo_iterativo(raiz, id_asada, posicion_fisica)
     except FileNotFoundError:
         return None
     return raiz

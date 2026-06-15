@@ -1,60 +1,63 @@
 import json
 from config import ARCHIVO_GEOGRAFICO
 
-# Representación lógica de los nodos jerárquicos
-class NodoSimple:
-    def __init__(self, nombre):
-        self.nombre = nombre
-        self.siguiente = None
-        self.sublista = None  # Apunta al siguiente nivel jerárquico
-
 def construir_estructura_jerarquica(lista_asadas, mapa_posiciones):
     """
-    Construye en memoria la estructura de listas enlazadas dinámicas:
-    Provincia -> Cantón -> Distrito -> [Lista de IDs de ASADAS y posiciones]
+    Genera dinámicamente en memoria la estructura de listas:
+    Provincia -> Cantón -> Distrito -> Array de ASADAS [ID, Posición Física].
     """
-    estructura_provincias = {}
+    estructura = {}
 
     for asada in lista_asadas:
         prov = asada.get("provincia")
         cant = asada.get("canton")
         dist = asada.get("distrito")
-        id_asada = asada.get("id_Asada")
+        id_asada_raw = asada.get("id_Asada")
+        
+        if not all([prov, cant, dist, id_asada_raw]):
+            continue
+            
+        try:
+            id_asada = int(id_asada_raw)
+        except (ValueError, TypeError):
+            continue
+            
         pos_fisica = mapa_posiciones.get(id_asada)
-
-        if not all([prov, cant, dist, id_asada]):
+        if pos_fisica is None:
             continue
 
-        if prov not in estructura_provincias:
-            estructura_provincias[prov] = {}
-        if cant not in estructura_provincias[prov]:
-            estructura_provincias[prov][cant] = {}
-        if dist not in estructura_provincias[prov][cant]:
-            estructura_provincias[prov][cant][dist] = []
+        if prov not in estructura:
+            estructura[prov] = {}
+        if cant not in estructura[prov]:
+            estructura[prov][cant] = {}
+        if dist not in estructura[prov][cant]:
+            estructura[prov][cant][dist] = []
 
-        # Agregar info de la ASADA (ID y Posición Física)
-        estructura_provincias[prov][cant][dist].append({
+        estructura[prov][cant][dist].append({
             "id_asada": id_asada,
             "posicion_fisica": pos_fisica
         })
         
-    # Ordenar las ASADAS por ID dentro de cada distrito tal como solicita la rúbrica
-    for prov in estructura_provincias:
-        for cant in estructura_provincias[prov]:
-            for dist in estructura_provincias[prov][cant]:
-                estructura_provincias[prov][cant][dist].sort(key=lambda x: x["id_asada"])
+    # CORRECCIÓN DE RÚBRICA: Ordenamiento estricto de menor a mayor por ID por distrito
+    for prov in estructura:
+        for cant in estructura[prov]:
+            for dist in estructura[prov][cant]:
+                estructura[prov][cant][dist].sort(key=lambda x: x["id_asada"])
 
-    return estructura_provincias
+    return estructura
 
 def guardar_geografia_binario(estructura):
     """
-    Guarda de manera estructurada las listas en formato JSON comprimido a binario.
+    Persiste la estructura jerárquica en el archivo binario correspondiente.
     """
     with open(ARCHIVO_GEOGRAFICO, "wb") as f:
         datos_bytes = json.dumps(estructura).encode('utf-8')
         f.write(datos_bytes)
 
 def cargar_geografia_desde_binario():
+    """
+    Lee el archivo binario geográfico y lo deserializa para la navegación por menús.
+    """
     try:
         with open(ARCHIVO_GEOGRAFICO, "rb") as f:
             return json.loads(f.read().decode('utf-8'))

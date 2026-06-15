@@ -4,45 +4,59 @@ from config import ARCHIVO_PRINCIPAL
 
 def guardar_registros_secuenciales(lista_asadas):
     """
-    Guarda todos los registros JSON en un archivo binario secuencialmente.
-    Cada registro se precede por un entero que indica su tamaño en bytes.
-    Retorna un diccionario {id_Asada: posicion_fisica} para construir los índices.
+    Escribe los registros completos en el archivo binario principal de forma secuencial.
+    Antepone un entero de 4 bytes indicando la longitud del bloque de datos.
+    Retorna un mapa {id_asada: posicion_fisica} de enteros.
     """
     mapa_posiciones = {}
     
+    if not lista_asadas or not isinstance(lista_asadas, list):
+        print("Error: La colección de ASADAS es inválida o nula.")
+        return mapa_posiciones
+
     with open(ARCHIVO_PRINCIPAL, "wb") as f:
         for asada in lista_asadas:
-            id_asada = asada.get("id_Asada")
-            if id_asada is None:
+            if not isinstance(asada, dict):
                 continue
                 
-            # Serializar diccionario a string/bytes UTF-8
+            id_asada_raw = asada.get("id_Asada")
+            if id_asada_raw is None:
+                continue
+            
+            try:
+                # Normalización restrictiva a tipo entero del identificador
+                id_asada = int(id_asada_raw)
+            except (ValueError, TypeError):
+                continue
+                
             datos_bytes = json.dumps(asada).encode('utf-8')
             longitud = len(datos_bytes)
             
-            # Obtener la posición física actual en el archivo antes de escribir
+            # Captura de la posición física del puntero en el archivo (Direccionamiento directo)
             posicion_actual = f.tell()
             
-            # Escribir tamaño (entero de 4 bytes 'I') y luego los datos
+            # Serialización binaria: Longitud (4 bytes 'I') + Datos UTF-8
             f.write(struct.pack("I", longitud))
             f.write(datos_bytes)
             
-            # Mapear el ID con su posición para el ABB y las listas
             mapa_posiciones[id_asada] = posicion_actual
             
     return mapa_posiciones
 
 def leer_registro_por_posicion(posicion):
     """
-    Acceso directo: Se posiciona en el archivo principal y extrae el registro completo.
+    Realiza acceso directo posicionándose en los bytes exactos indicados
+    y extrae el objeto JSON original.
     """
-    with open(ARCHIVO_PRINCIPAL, "rb") as f:
-        f.seek(posicion)
-        # Leer los 4 bytes de la longitud del registro
-        longitud_bytes = f.read(4)
-        if not longitud_bytes:
-            return None
-        longitud = struct.unpack("I", longitud_bytes)[0]
-        # Leer el JSON completo
-        datos_json = f.read(longitud).decode('utf-8')
-        return json.loads(datos_json)
+    try:
+        with open(ARCHIVO_PRINCIPAL, "rb") as f:
+            f.seek(posicion)
+            longitud_bytes = f.read(4)
+            if not longitud_bytes:
+                return None
+            longitud = struct.unpack("I", longitud_bytes)[0]
+            datos_json = f.read(longitud).decode('utf-8')
+            return json.loads(datos_json)
+    except Exception as e:
+        print(f"Error de acceso directo en el archivo principal: {e}")
+        return None
